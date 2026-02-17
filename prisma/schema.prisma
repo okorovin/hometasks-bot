@@ -1,0 +1,87 @@
+generator client {
+    provider = "prisma-client-js"
+    output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model User {
+    id             Int      @id @default(autoincrement())
+    telegramUserId BigInt   @unique @map("telegram_user_id")
+    timezone       String   @default("Europe/Moscow")
+    quietFrom      String   @default("22:00") @map("quiet_from")
+    quietTo        String   @default("09:00") @map("quiet_to")
+    digestTime     String   @default("10:00") @map("digest_time")
+    createdAt      DateTime @default(now()) @map("created_at")
+
+    tasks Task[]
+
+    @@map("users")
+}
+
+enum TaskStatus {
+    ACTIVE
+    DONE
+    DELETED
+}
+
+enum SourceType {
+    TEXT
+    FORWARD
+}
+
+model Task {
+    id            Int        @id @default(autoincrement())
+    userId        Int        @map("user_id")
+    title         String
+    notes         String?
+    status        TaskStatus @default(ACTIVE)
+    dueAt         DateTime?  @map("due_at")
+    createdAt     DateTime   @default(now()) @map("created_at")
+    doneAt        DateTime?  @map("done_at")
+    sourceType    SourceType @default(TEXT) @map("source_type")
+    cardMessageId Int?       @map("card_message_id")
+
+    user       User        @relation(fields: [userId], references: [id])
+    repeatRule RepeatRule?
+    reminders  Reminder[]
+
+    @@map("tasks")
+}
+
+enum RepeatUnit {
+    DAY
+    WEEK
+    MONTH
+}
+
+model RepeatRule {
+    id     Int        @id @default(autoincrement())
+    taskId Int        @unique @map("task_id")
+    everyN Int        @map("every_n")
+    unit   RepeatUnit
+    active Boolean    @default(true)
+
+    task Task @relation(fields: [taskId], references: [id])
+
+    @@map("repeat_rules")
+}
+
+enum ReminderState {
+    SCHEDULED
+    SENT
+    CANCELLED
+}
+
+model Reminder {
+    id       Int           @id @default(autoincrement())
+    taskId   Int           @map("task_id")
+    remindAt DateTime      @map("remind_at")
+    state    ReminderState @default(SCHEDULED)
+
+    task Task @relation(fields: [taskId], references: [id])
+
+    @@map("reminders")
+}
