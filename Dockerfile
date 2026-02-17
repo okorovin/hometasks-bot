@@ -27,4 +27,4 @@ COPY --from=builder /app/dist ./dist
 
 ENV NODE_ENV=production
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma db push && node dist/index.js"]
