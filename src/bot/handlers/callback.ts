@@ -2,7 +2,7 @@ import type { Context } from "grammy"
 import * as taskService from "../../services/task.service.js"
 import * as repeatService from "../../services/repeat.service.js"
 import { getOrCreateUser } from "../../services/user.service.js"
-import { formatTaskCard } from "../formatters/task.js"
+import { formatTaskCard, formatTaskListItem } from "../formatters/task.js"
 import {
     taskCardKeyboard,
     postponeKeyboard,
@@ -12,6 +12,7 @@ import {
 } from "../keyboards/task-card.js"
 import { awaitingInput } from "./message.js"
 import { dateAtTimeInTz } from "../../utils/date.js"
+import { paginate, paginationKeyboard } from "../../utils/pagination.js"
 import { notifyError } from "../../utils/error-notifier.js"
 import { logger } from "../../logger.js"
 import type { RepeatUnit } from "@prisma/client"
@@ -27,6 +28,19 @@ export async function handleCallback(ctx: Context): Promise<void> {
     try {
         const user = await getOrCreateUser(telegramUserId)
         const parts = data.split(":")
+
+        // Handle pagination: "today:page:2", "inbox:page:1", etc.
+        if (parts[1] === "page") {
+            await handlePagination(
+                ctx,
+                parts[0]!,
+                parseInt(parts[2]!, 10),
+                user.id,
+                user.timezone,
+            )
+            return
+        }
+
         const action = parts[0]
         const taskId = parts[1] ? parseInt(parts[1], 10) : NaN
 
@@ -293,6 +307,55 @@ async function handleOpen(
         reply_markup: taskCardKeyboard(task),
     })
     await taskService.updateCardMessageId(task.id, msg.message_id)
+}
+
+async function handlePagination(
+    ctx: Context,
+    listType: string,
+    page: number,
+    userId: number,
+    timezone: string,
+): Promise<void> {
+    let tasks: Awaited<ReturnType<typeof taskService.getAll>>
+    let title: string
+
+    switch (listType) {
+        case "today":
+            tasks = await taskService.getToday(userId, timezone)
+            title = "📋 <b>Today</b>"
+            break
+        case "inbox":
+            tasks = await taskService.getInbox(userId)
+            title = "📥 <b>Inbox</b>"
+            break
+        case "overdue":
+            tasks = await taskService.getOverdue(userId, timezone)
+            title = "⚠️ <b>Overdue</b>"
+            break
+        case "week":
+            tasks = await taskService.getWeek(userId, timezone)
+            title = "📅 <b>This week</b>"
+            break
+        case "all":
+            tasks = await taskService.getAll(userId)
+            title = "📋 <b>All tasks</b>"
+            break
+        default:
+            return
+    }
+
+    const { items, totalPages, total } = paginate(tasks, page)
+    const lines = items.map((t, i) =>
+        formatTaskListItem(t, timezone, (page - 1) * 5 + i),
+    )
+
+    const text = `${title} (${total} tasks):\n\n${lines.join("\n")}`
+    const kb = paginationKeyboard(listType, page, totalPages)
+
+    await ctx.editMessageText(text, {
+        parse_mode: "HTML",
+        reply_markup: kb,
+    })
 }
 
 function escapeHtml(text: string): string {

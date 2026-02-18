@@ -1,7 +1,7 @@
-import { config } from "./config/index.js"
 import { logger } from "./logger.js"
 import { getPrisma } from "./db/index.js"
 import { createBot } from "./bot/index.js"
+import { setCommandsMenu } from "./bot/commands/index.js"
 import { startScheduler, stopScheduler } from "./scheduler/index.js"
 
 async function main(): Promise<void> {
@@ -30,6 +30,14 @@ async function main(): Promise<void> {
 
     process.on("SIGINT", () => shutdown("SIGINT"))
     process.on("SIGTERM", () => shutdown("SIGTERM"))
+
+    // Set commands menu (non-critical, don't crash if fails)
+    try {
+        await setCommandsMenu(bot)
+        logger.info("Bot commands menu set")
+    } catch (err) {
+        logger.warn({ err }, "Failed to set commands menu")
+    }
 
     // Start bot (this blocks)
     await bot.start({
