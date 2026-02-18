@@ -121,6 +121,51 @@ async function handlePendingInput(
                     reply_markup: taskCardKeyboard(fullTask),
                 })
             }
+        } else if (pending.action === "set_due_date") {
+            // Parse date from user text via LLM
+            const parsed = await llmService.parseTaskFromText(
+                `Set date: ${text}`,
+                user.timezone,
+            )
+
+            let dueAt: Date | null = null
+            if (parsed.dueAt) {
+                const parsedDate = new Date(parsed.dueAt)
+                if (!isNaN(parsedDate.getTime())) {
+                    dueAt = parsedDate
+                }
+            }
+
+            if (!dueAt) {
+                await ctx.reply("⚠️ Could not parse date. Try again, e.g.: \"March 15\", \"Friday 18:00\", \"25.02 at 10:00\"")
+                // Re-set awaiting so user can try again
+                awaitingInput.set(ctx.from.id, pending)
+                return
+            }
+
+            await taskService.setDueDate(pending.taskId, dueAt)
+            const fullTask = await taskService.getTaskById(pending.taskId)
+            if (!fullTask) return
+
+            const cardText = formatTaskCard(fullTask, user.timezone)
+
+            if (fullTask.cardMessageId) {
+                await ctx.api.editMessageText(
+                    ctx.chat!.id,
+                    fullTask.cardMessageId,
+                    cardText,
+                    {
+                        parse_mode: "HTML",
+                        reply_markup: taskCardKeyboard(fullTask),
+                    },
+                )
+                await ctx.reply("✅ Due date set!")
+            } else {
+                await ctx.reply(cardText, {
+                    parse_mode: "HTML",
+                    reply_markup: taskCardKeyboard(fullTask),
+                })
+            }
         }
     } catch (error) {
         logger.error({ err: error }, "Failed to handle pending input")

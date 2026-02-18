@@ -32,3 +32,4 @@
 | 28 | 2026-02-17 | Railway crashed: prisma db push --skip-generate — unknown option |
 | 29 | 2026-02-17 | GrammyError: Call to 'setMyCommands' failed! (404: Not Found) |
 | 30 | 2026-02-18 | при просмотре списка задач не работают кнопки пагинации |
+| 31 | 2026-02-18 | при нажатии кнопки set due можно выбрать сегодня или завтра. а мне нужна также еще возможность задать любую дату |

@@ -58,6 +58,7 @@ export function setDueKeyboard(taskId: number): InlineKeyboard {
     kb.text("Tomorrow 09:00", `setdue_do:${taskId}:tomorrow_9`)
     kb.text("Tomorrow 18:00", `setdue_do:${taskId}:tomorrow_18`)
     kb.row()
+    kb.text("📝 Custom date", `setdue_custom:${taskId}`)
     kb.text("← Back", `back:${taskId}`)
     return kb
 }

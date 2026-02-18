@@ -77,6 +77,9 @@ export async function handleCallback(ctx: Context): Promise<void> {
             case "repeat_remove":
                 await handleRepeatRemove(ctx, taskId, user.timezone)
                 break
+            case "setdue_custom":
+                await handleSetDueCustom(ctx, taskId)
+                break
             case "edit":
                 await handleEdit(ctx, taskId)
                 break
@@ -255,6 +258,20 @@ async function handleRepeatRemove(
 ): Promise<void> {
     await repeatService.removeRule(taskId)
     await editCard(ctx, taskId, timezone)
+}
+
+async function handleSetDueCustom(
+    ctx: Context,
+    taskId: number,
+): Promise<void> {
+    if (!ctx.from) return
+    awaitingInput.set(ctx.from.id, {
+        action: "set_due_date",
+        taskId,
+    })
+    await ctx.reply(
+        '📅 Send the date/time for this task.\nExamples: "March 15", "Friday 18:00", "in 3 days", "25.02 at 10:00"',
+    )
 }
 
 async function handleEdit(ctx: Context, taskId: number): Promise<void> {
