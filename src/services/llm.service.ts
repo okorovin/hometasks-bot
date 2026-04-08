@@ -1,4 +1,4 @@
-import OpenAI from "openai"
+import OpenAI, { toFile } from "openai"
 import { config } from "../config/index.js"
 import { logger } from "../logger.js"
 
@@ -102,6 +102,28 @@ export async function parseTaskFromText(
             dueAt: null,
             notes: null,
         }
+    }
+}
+
+export async function transcribeAudio(audioBuffer: Uint8Array, filename: string): Promise<string> {
+    try {
+        const file = await toFile(audioBuffer, filename, { type: "audio/ogg" })
+
+        const transcription = await client.audio.transcriptions.create({
+            model: config.WHISPER_MODEL,
+            file,
+        })
+
+        const text = transcription.text.trim()
+        if (!text) {
+            throw new Error("Empty transcription result")
+        }
+
+        logger.info({ filename, textLength: text.length }, "Audio transcribed successfully")
+        return text
+    } catch (error) {
+        logger.error({ err: error, filename }, "Audio transcription failed")
+        throw error
     }
 }
 

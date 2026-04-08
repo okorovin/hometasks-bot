@@ -30,6 +30,7 @@ enum TaskStatus {
 enum SourceType {
     TEXT
     FORWARD
+    VOICE
 }
 
 model Task {

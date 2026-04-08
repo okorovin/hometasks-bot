@@ -14,6 +14,29 @@ import {
 import { notifyError } from "../utils/error-notifier.js"
 import { logger } from "../logger.js"
 
+const TELEGRAM_MSG_LIMIT = 4000
+
+function splitMessage(text: string, limit: number): string[] {
+    if (text.length <= limit) return [text]
+
+    const chunks: string[] = []
+    const lines = text.split("\n")
+    let current = ""
+
+    for (const line of lines) {
+        if (current.length + line.length + 1 > limit && current.length > 0) {
+            chunks.push(current.trimEnd())
+            current = ""
+        }
+        current += (current ? "\n" : "") + line
+    }
+    if (current) {
+        chunks.push(current.trimEnd())
+    }
+
+    return chunks
+}
+
 const TICK_INTERVAL = 60_000 // 60 seconds
 let intervalId: ReturnType<typeof setInterval> | null = null
 
@@ -168,36 +191,39 @@ async function processDigest(bot: Bot<Context>): Promise<void> {
             const lines: string[] = ["📬 <b>Daily Digest</b>\n"]
 
             if (overdue.length > 0) {
-                lines.push(`⚠️ Overdue: ${overdue.length} task(s)`)
-                for (const t of overdue.slice(0, 5)) {
+                lines.push(`⚠️ <b>Overdue: ${overdue.length} task(s)</b>`)
+                for (const t of overdue) {
                     lines.push(`  • ${t.title}`)
-                }
-                if (overdue.length > 5) {
-                    lines.push(`  ... and ${overdue.length - 5} more`)
                 }
                 lines.push("")
             }
 
             if (today.length > 0) {
-                lines.push(`📋 Today: ${today.length} task(s)`)
-                for (const t of today.slice(0, 5)) {
+                lines.push(`📋 <b>Today: ${today.length} task(s)</b>`)
+                for (const t of today) {
                     lines.push(`  • ${t.title}`)
-                }
-                if (today.length > 5) {
-                    lines.push(`  ... and ${today.length - 5} more`)
                 }
                 lines.push("")
             }
 
             if (inbox.length > 0) {
-                lines.push(`📥 Inbox: ${inbox.length} task(s)`)
+                lines.push(`📥 <b>Inbox: ${inbox.length} task(s)</b>`)
+                for (const t of inbox) {
+                    lines.push(`  • ${t.title}`)
+                }
+                lines.push("")
             }
 
-            await bot.api.sendMessage(
-                Number(user.telegramUserId),
-                lines.join("\n"),
-                { parse_mode: "HTML" },
-            )
+            const fullText = lines.join("\n")
+            const chunks = splitMessage(fullText, 4000)
+
+            for (const chunk of chunks) {
+                await bot.api.sendMessage(
+                    Number(user.telegramUserId),
+                    chunk,
+                    { parse_mode: "HTML" },
+                )
+            }
 
             lastDigestSent.set(user.id, todayKey)
         } catch (error) {

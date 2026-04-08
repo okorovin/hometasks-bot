@@ -4,6 +4,7 @@ import { logger } from "../logger.js"
 import { authMiddleware } from "./middleware/auth.js"
 import { registerCommands } from "./commands/index.js"
 import { handleMessage } from "./handlers/message.js"
+import { handleVoice } from "./handlers/voice.js"
 import { handleCallback } from "./handlers/callback.js"
 import { setBot, notifyError } from "../utils/error-notifier.js"
 
@@ -19,6 +20,9 @@ export function createBot(): Bot {
 
     // Handle callback queries (inline buttons)
     bot.on("callback_query:data", handleCallback)
+
+    // Handle voice messages (transcription → task creation)
+    bot.on("message:voice", handleVoice)
 
     // Handle text messages (task creation)
     bot.on("message:text", handleMessage)

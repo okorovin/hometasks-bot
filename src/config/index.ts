@@ -23,5 +23,7 @@ export const config = {
     LLM_API_KEY: optionalEnv("LLM_API_KEY", ""),
     LLM_MODEL: optionalEnv("LLM_MODEL", "gpt-4o-mini"),
 
+    WHISPER_MODEL: optionalEnv("WHISPER_MODEL", "whisper-1"),
+
     NODE_ENV: optionalEnv("NODE_ENV", "development"),
 } as const

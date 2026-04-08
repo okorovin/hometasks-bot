@@ -50,3 +50,32 @@ Full implementation of the Telegram bot from scratch.
 - Run `prisma db push` to create tables
 - Configure .env with real credentials
 - Test all features end-to-end
+
+## Session 4 — 2026-04-08 (Whisper Voice Transcription)
+
+### What was done:
+Added voice message support — bot now transcribes voice notes via OpenAI Whisper API and creates tasks from them.
+
+### Files changed:
+- `prisma/schema.prisma` — Added `VOICE` to `SourceType` enum
+- `src/config/index.ts` — Added `WHISPER_MODEL` config (default: `whisper-1`)
+- `src/services/llm.service.ts` — Added `transcribeAudio()` function using OpenAI `toFile` + `audio.transcriptions.create()`
+- `src/bot/handlers/voice.ts` — **New file**: voice message handler (download → transcribe → parse → create task)
+- `src/bot/index.ts` — Registered `message:voice` handler
+
+### Flow:
+1. User sends voice note → bot replies "Transcribing..."
+2. Downloads .ogg file from Telegram API
+3. Sends to OpenAI Whisper for transcription
+4. Passes transcript through `parseTaskFromText()` (same as text messages)
+5. Creates task with `sourceType: VOICE`, transcript saved in `notes`
+6. Replies with standard task card
+
+### Current state:
+- TypeScript compiles without errors
+- Voice transcription integrated, max 5 min voice messages
+- DB schema needs `db:push` to add VOICE enum value (DB was unreachable locally)
+
+### Next steps:
+- Run `prisma db push` on production/accessible DB to apply VOICE enum
+- Test voice message flow end-to-end
