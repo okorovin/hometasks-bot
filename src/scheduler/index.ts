@@ -10,6 +10,7 @@ import {
     getHoursMinutes,
     startOfDayInTz,
     endOfDayInTz,
+    formatDate,
 } from "../utils/date.js"
 import { notifyError } from "../utils/error-notifier.js"
 import { logger } from "../logger.js"
@@ -178,11 +179,16 @@ async function processDigest(bot: Bot<Context>): Promise<void> {
                 user.timezone,
             )
             const inbox = await taskService.getInbox(user.id)
+            const upcoming = await taskService.getUpcoming(
+                user.id,
+                user.timezone,
+            )
 
             if (
                 overdue.length === 0 &&
                 today.length === 0 &&
-                inbox.length === 0
+                inbox.length === 0 &&
+                upcoming.length === 0
             ) {
                 lastDigestSent.set(user.id, todayKey)
                 continue
@@ -202,6 +208,15 @@ async function processDigest(bot: Bot<Context>): Promise<void> {
                 lines.push(`📋 <b>Today: ${today.length} task(s)</b>`)
                 for (const t of today) {
                     lines.push(`  • ${t.title}`)
+                }
+                lines.push("")
+            }
+
+            if (upcoming.length > 0) {
+                lines.push(`📅 <b>Upcoming: ${upcoming.length} task(s)</b>`)
+                for (const t of upcoming) {
+                    const dateStr = formatDate(t.dueAt, user.timezone)
+                    lines.push(`  • ${t.title} — ${dateStr}`)
                 }
                 lines.push("")
             }

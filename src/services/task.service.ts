@@ -228,6 +228,25 @@ export async function getWeek(
     })
 }
 
+export async function getUpcoming(
+    userId: number,
+    timezone: string,
+): Promise<Task[]> {
+    const prisma = getPrisma()
+    const todayEnd = endOfDayInTz(timezone)
+    const weekEnd = new Date(startOfDayInTz(timezone).getTime() + 7 * 24 * 60 * 60 * 1000)
+
+    return prisma.task.findMany({
+        where: {
+            userId,
+            status: "ACTIVE",
+            dueAt: { gt: todayEnd, lt: weekEnd },
+        },
+        orderBy: { dueAt: "asc" },
+        include: { repeatRule: true },
+    })
+}
+
 export async function getAll(userId: number): Promise<Task[]> {
     const prisma = getPrisma()
     return prisma.task.findMany({
