@@ -179,14 +179,14 @@ export async function getToday(
     timezone: string,
 ): Promise<Task[]> {
     const prisma = getPrisma()
-    const start = startOfDayInTz(timezone)
     const end = endOfDayInTz(timezone)
 
+    // Include overdue tasks (dueAt < today) along with today's tasks
     return prisma.task.findMany({
         where: {
             userId,
             status: "ACTIVE",
-            dueAt: { gte: start, lte: end },
+            dueAt: { lte: end },
         },
         orderBy: { dueAt: "asc" },
         include: { repeatRule: true },
