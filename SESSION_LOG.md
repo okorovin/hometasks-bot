@@ -112,3 +112,75 @@ Added voice message support — bot now transcribes voice notes via OpenAI Whisp
 ### Current state:
 - TypeScript compiles without errors
 - Needs deploy to test in production
+
+## Session 9 — 2026-05-18 (Task 11: React Web Scaffold)
+
+### What was done:
+Created `web/` directory with full React scaffold for the web UI.
+
+### Files created:
+- `web/package.json` — React 19, Ant Design 5, react-router-dom 7, Vite 6, TypeScript 5.9
+- `web/vite.config.ts` — Vite config with `/api` proxy to localhost:3000
+- `web/tsconfig.json` — TypeScript config for browser/bundler target
+- `web/index.html` — HTML entry point
+- `web/src/main.tsx` — React root with BrowserRouter + Ant Design ConfigProvider
+- `web/src/App.tsx` — Routing: /login (public) + protected routes with AppLayout
+- `web/src/api/client.ts` — Typed API client (all task/tag/auth endpoints), JWT from localStorage
+- `web/src/components/AppLayout.tsx` — Ant Design Sider layout with nav menu (Dashboard/Tasks/Tags/Logout)
+- `web/src/pages/Login.tsx` — Placeholder
+- `web/src/pages/Dashboard.tsx` — Placeholder
+- `web/src/pages/Tasks.tsx` — Placeholder
+- `web/src/pages/Tags.tsx` — Placeholder
+
+### Build result:
+- `npm install` — 138 packages, 0 vulnerabilities
+- `npm run build` — TypeScript + Vite build passed, 504 kB bundle
+
+### Current state:
+- Web scaffold committed, build passes
+- Placeholder pages ready to be replaced in Tasks 12-15
+
+## Session 10 — 2026-05-18 (Full Tags + Web UI implementation)
+
+### Summary:
+Implemented the complete Tags & Web UI feature — 17 plan tasks executed via subagent-driven development.
+
+### Backend changes:
+- **Prisma schema**: Added `Tag`, `TaskTag` models (many-to-many)
+- **tag.service.ts**: CRUD + assign/remove tags, ensureTags for batch create
+- **auth.service.ts**: One-time token generation/validation (5min TTL, in-memory Map)
+- **LLM**: Extended prompts to auto-parse tags from user text (tags field in ParsedTask)
+- **Bot**: New keyboards (tag selection toggle), /tags, /tag, /web commands
+- **Task queries**: All includes now fetch taskTags with tag data
+- **Formatters**: Task card shows tags line
+- **Config**: Added JWT_SECRET, WEB_URL, PORT
+- **Fastify API**: auth plugin (JWT), static plugin (SPA fallback), routes:
+  - Auth: POST /api/auth/token, GET /api/auth/me
+  - Tasks: Full CRUD + done/postpone/tags
+  - Tags: Full CRUD
+- **index.ts**: Fastify starts before bot (non-blocking)
+
+### Frontend (web/):
+- React 19 + Ant Design 5 + Vite 6 + React Router 7
+- API client with JWT auth (localStorage)
+- Pages: Login (auto token exchange), Dashboard (overdue/today/upcoming sections with TaskCard), Tasks (table + filters + search), Tags (inline edit + color picker)
+- Components: AppLayout (Sider nav), TaskCard, TaskModal, TagBadge
+- White theme (Ant default)
+
+### Dockerfile:
+- Updated to build frontend in builder stage, copy web/dist to production
+
+### Builds:
+- Backend: `npm run build` — clean
+- Frontend: `npm run build` — clean (chunk size warning expected for Ant Design)
+
+### Env vars needed for deploy:
+- JWT_SECRET (required, 32+ chars)
+- WEB_URL (public Railway URL)
+- PORT (Railway assigns automatically)
+
+### What to do next:
+1. `git add .env.example && git commit -m "feat: add env vars for web UI and JWT auth"`
+2. Add JWT_SECRET and WEB_URL to Railway env vars
+3. `npx prisma db push` to apply Tag/TaskTag schema
+4. Deploy and test

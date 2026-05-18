@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/api/client.ts","./src/components/applayout.tsx","./src/pages/dashboard.tsx","./src/pages/login.tsx","./src/pages/tags.tsx","./src/pages/tasks.tsx"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/api/client.ts","./src/components/applayout.tsx","./src/components/tagbadge.tsx","./src/components/taskcard.tsx","./src/components/taskmodal.tsx","./src/pages/dashboard.tsx","./src/pages/login.tsx","./src/pages/tags.tsx","./src/pages/tasks.tsx"],"version":"5.9.3"}
