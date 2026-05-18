@@ -39,7 +39,7 @@ export async function getTaskById(taskId: number): Promise<Task | null> {
     const prisma = getPrisma()
     return prisma.task.findUnique({
         where: { id: taskId },
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
 }
 
@@ -50,7 +50,7 @@ export async function completeTask(taskId: number): Promise<Task> {
     // Guard: prevent duplicate completion (e.g. clicking Done on multiple overdue cards)
     const existing = await prisma.task.findUnique({
         where: { id: taskId },
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
     if (!existing || existing.status !== "ACTIVE") {
         return existing as Task
@@ -62,7 +62,7 @@ export async function completeTask(taskId: number): Promise<Task> {
             status: "DONE",
             doneAt: now,
         },
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
 
     // Cancel pending reminders
@@ -181,15 +181,18 @@ export async function getToday(
     const prisma = getPrisma()
     const end = endOfDayInTz(timezone)
 
-    // Include overdue tasks (dueAt < today) along with today's tasks
+    // Include overdue + today's tasks + inbox (no due date)
     return prisma.task.findMany({
         where: {
             userId,
             status: "ACTIVE",
-            dueAt: { lte: end },
+            OR: [
+                { dueAt: { lte: end } },
+                { dueAt: null },
+            ],
         },
         orderBy: { dueAt: "asc" },
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
 }
 
@@ -202,7 +205,7 @@ export async function getInbox(userId: number): Promise<Task[]> {
             dueAt: null,
         },
         orderBy: { createdAt: "desc" },
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
 }
 
@@ -220,7 +223,7 @@ export async function getOverdue(
             dueAt: { lt: start },
         },
         orderBy: { dueAt: "asc" },
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
 }
 
@@ -239,7 +242,7 @@ export async function getWeek(
             dueAt: { gte: start, lt: end },
         },
         orderBy: { dueAt: "asc" },
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
 }
 
@@ -258,7 +261,7 @@ export async function getUpcoming(
             dueAt: { gt: todayEnd, lt: weekEnd },
         },
         orderBy: { dueAt: "asc" },
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
 }
 
@@ -270,6 +273,6 @@ export async function getAll(userId: number): Promise<Task[]> {
             status: "ACTIVE",
         },
         orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
-        include: { repeatRule: true },
+        include: { repeatRule: true, taskTags: { include: { tag: true } } },
     })
 }

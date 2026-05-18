@@ -1,7 +1,10 @@
-import type { Task, RepeatRule } from "@prisma/client"
+import type { Task, RepeatRule, Tag, TaskTag } from "@prisma/client"
 import { formatDatetime } from "../../utils/date.js"
 
-type TaskWithRepeat = Task & { repeatRule?: RepeatRule | null }
+type TaskWithRepeat = Task & {
+    repeatRule?: RepeatRule | null
+    taskTags?: (TaskTag & { tag: Tag })[]
+}
 
 function formatRepeatUnit(unit: string, n: number): string {
     switch (unit) {
@@ -32,6 +35,10 @@ export function formatTaskCard(
             ? formatRepeatUnit(task.repeatRule.unit, task.repeatRule.everyN)
             : "no"
     lines.push(`🔁 Repeat: ${repeat}`)
+
+    const tagNames = task.taskTags?.map(tt => tt.tag.name) ?? []
+    const tagsStr = tagNames.length > 0 ? tagNames.join(", ") : "—"
+    lines.push(`🏷 Tags: ${tagsStr}`)
 
     if (task.notes) {
         const truncated =
