@@ -25,5 +25,9 @@ export const config = {
 
     WHISPER_MODEL: optionalEnv("WHISPER_MODEL", "whisper-1"),
 
+    JWT_SECRET: requireEnv("JWT_SECRET"),
+    WEB_URL: optionalEnv("WEB_URL", "http://localhost:3000"),
+    PORT: parseInt(optionalEnv("PORT", "3000"), 10),
+
     NODE_ENV: optionalEnv("NODE_ENV", "development"),
 } as const
