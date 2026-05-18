@@ -3,6 +3,7 @@ import { getPrisma } from "./db/index.js"
 import { createBot } from "./bot/index.js"
 import { setCommandsMenu } from "./bot/commands/index.js"
 import { startScheduler, stopScheduler } from "./scheduler/index.js"
+import { startApi } from "./api/index.js"
 
 async function main(): Promise<void> {
     logger.info("Starting Home Tasks Bot...")
@@ -11,6 +12,9 @@ async function main(): Promise<void> {
     const prisma = getPrisma()
     await prisma.$connect()
     logger.info("Database connected")
+
+    // Start API server (non-blocking)
+    await startApi()
 
     // Create and start bot
     const bot = createBot()
