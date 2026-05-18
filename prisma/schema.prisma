@@ -17,6 +17,7 @@ model User {
     createdAt      DateTime @default(now()) @map("created_at")
 
     tasks Task[]
+    tags  Tag[]
 
     @@map("users")
 }
@@ -48,6 +49,7 @@ model Task {
     user       User        @relation(fields: [userId], references: [id])
     repeatRule RepeatRule?
     reminders  Reminder[]
+    taskTags   TaskTag[]
 
     @@map("tasks")
 }
@@ -85,4 +87,28 @@ model Reminder {
     task Task @relation(fields: [taskId], references: [id])
 
     @@map("reminders")
+}
+
+model Tag {
+    id     Int     @id @default(autoincrement())
+    userId Int     @map("user_id")
+    name   String
+    color  String?
+
+    user     User      @relation(fields: [userId], references: [id])
+    taskTags TaskTag[]
+
+    @@unique([userId, name])
+    @@map("tags")
+}
+
+model TaskTag {
+    taskId Int @map("task_id")
+    tagId  Int @map("tag_id")
+
+    task Task @relation(fields: [taskId], references: [id])
+    tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+    @@id([taskId, tagId])
+    @@map("task_tags")
 }
