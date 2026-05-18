@@ -2,6 +2,7 @@ import type { Context } from "grammy"
 import { getOrCreateUser } from "../../services/user.service.js"
 import * as taskService from "../../services/task.service.js"
 import * as llmService from "../../services/llm.service.js"
+import * as tagService from "../../services/tag.service.js"
 import { formatTaskCard } from "../formatters/task.js"
 import { taskCardKeyboard } from "../keyboards/task-card.js"
 import { notifyError } from "../../utils/error-notifier.js"
@@ -63,6 +64,12 @@ export async function handleMessage(ctx: Context): Promise<void> {
             dueAt,
             sourceType: isForward ? "FORWARD" : "TEXT",
         })
+
+        // Auto-assign LLM-parsed tags
+        if (parsed.tags.length > 0) {
+            const tags = await tagService.ensureTags(user.id, parsed.tags)
+            await tagService.setTaskTags(task.id, tags.map(t => t.id))
+        }
 
         // Load task with repeat rule for formatting
         const fullTask = await taskService.getTaskById(task.id)
