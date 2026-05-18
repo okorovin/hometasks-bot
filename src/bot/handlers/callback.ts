@@ -1,6 +1,7 @@
 import type { Context } from "grammy"
 import * as taskService from "../../services/task.service.js"
 import * as repeatService from "../../services/repeat.service.js"
+import * as tagService from "../../services/tag.service.js"
 import { getOrCreateUser } from "../../services/user.service.js"
 import { formatTaskCard, formatTaskListItem } from "../formatters/task.js"
 import {
@@ -10,6 +11,7 @@ import {
     deleteConfirmKeyboard,
     setDueKeyboard,
 } from "../keyboards/task-card.js"
+import { tagSelectionKeyboard } from "../keyboards/tag-keyboard.js"
 import { awaitingInput } from "./message.js"
 import { dateAtTimeInTz } from "../../utils/date.js"
 import { paginate, taskListKeyboard } from "../../utils/pagination.js"
@@ -76,6 +78,18 @@ export async function handleCallback(ctx: Context): Promise<void> {
                 break
             case "repeat_remove":
                 await handleRepeatRemove(ctx, taskId, user.timezone)
+                break
+            case "tags":
+                await handleTagsMenu(ctx, taskId, user.id)
+                break
+            case "tag_add":
+                await handleTagAdd(ctx, taskId, parseInt(parts[2]!, 10), user.id)
+                break
+            case "tag_remove":
+                await handleTagRemove(ctx, taskId, parseInt(parts[2]!, 10), user.id)
+                break
+            case "tag_new":
+                await handleTagNew(ctx, taskId)
                 break
             case "setdue_custom":
                 await handleSetDueCustom(ctx, taskId)
@@ -324,6 +338,31 @@ async function handleOpen(
         reply_markup: taskCardKeyboard(task),
     })
     await taskService.updateCardMessageId(task.id, msg.message_id)
+}
+
+async function handleTagsMenu(ctx: Context, taskId: number, userId: number): Promise<void> {
+    const allTags = await tagService.getUserTags(userId)
+    const taskTags = await tagService.getTagsForTask(taskId)
+    const activeTagIds = new Set(taskTags.map(t => t.id))
+    await ctx.editMessageReplyMarkup({
+        reply_markup: tagSelectionKeyboard(taskId, allTags, activeTagIds),
+    })
+}
+
+async function handleTagAdd(ctx: Context, taskId: number, tagId: number, userId: number): Promise<void> {
+    await tagService.addTagToTask(taskId, tagId)
+    await handleTagsMenu(ctx, taskId, userId)
+}
+
+async function handleTagRemove(ctx: Context, taskId: number, tagId: number, userId: number): Promise<void> {
+    await tagService.removeTagFromTask(taskId, tagId)
+    await handleTagsMenu(ctx, taskId, userId)
+}
+
+async function handleTagNew(ctx: Context, taskId: number): Promise<void> {
+    if (!ctx.from) return
+    awaitingInput.set(ctx.from.id, { action: "new_tag", taskId })
+    await ctx.reply("🏷 Send the tag name:")
 }
 
 async function handlePagination(

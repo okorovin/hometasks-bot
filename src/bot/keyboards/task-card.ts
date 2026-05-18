@@ -9,6 +9,7 @@ export function taskCardKeyboard(task: Task): InlineKeyboard {
     kb.text("📅 Set due", `setdue:${task.id}`)
     kb.text("🔁 Repeat", `repeat:${task.id}`)
     kb.row()
+    kb.text("🏷 Tags", `tags:${task.id}`)
     kb.text("✏️ Edit", `edit:${task.id}`)
     kb.text("🗑 Delete", `delete:${task.id}`)
     return kb

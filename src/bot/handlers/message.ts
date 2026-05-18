@@ -173,6 +173,10 @@ async function handlePendingInput(
                     reply_markup: taskCardKeyboard(fullTask),
                 })
             }
+        } else if (pending.action === "new_tag") {
+            const tag = await tagService.createTag(user.id, text)
+            await tagService.addTagToTask(pending.taskId, tag.id)
+            await ctx.reply(`✅ Tag "${tag.name}" added!`)
         }
     } catch (error) {
         logger.error({ err: error }, "Failed to handle pending input")
