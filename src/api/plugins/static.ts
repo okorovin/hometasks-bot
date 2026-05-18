@@ -16,9 +16,9 @@ async function staticFiles(app: FastifyInstance): Promise<void> {
 
     await app.register(fastifyStatic, {
         root: webDist,
-        wildcard: false,
     })
 
+    // SPA fallback: non-API routes that don't match a static file get index.html
     app.setNotFoundHandler((request, reply) => {
         if (request.url.startsWith("/api/")) {
             reply.status(404).send({ error: "Not found" })

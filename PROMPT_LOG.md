@@ -52,4 +52,6 @@
 | 48 | 2026-05-18 | Спека утверждена, го делать |
 | 49 | 2026-05-18 | Выбран subagent-driven подход для выполнения плана |
 | 50 | 2026-05-18 | Task 11: React scaffold — Vite + Ant Design + Router + API client + Layout |
+| 51 | 2026-05-18 | Как применить схему Prisma и как узнать домен на Railway? |
+| 52 | 2026-05-18 | Задеплоил, открываю домен — белый экран |
 | 51 | 2026-05-18 | Task 16: Update Dockerfile to build and serve frontend |
