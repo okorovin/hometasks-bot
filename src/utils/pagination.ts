@@ -1,4 +1,5 @@
 import { InlineKeyboard } from "grammy"
+import type { Task } from "@prisma/client"
 
 const PAGE_SIZE = 5
 
@@ -33,6 +34,40 @@ export function paginationKeyboard(
     totalPages: number,
 ): InlineKeyboard {
     const kb = new InlineKeyboard()
+
+    if (page > 1) {
+        kb.text("← Back", `${prefix}:page:${page - 1}`)
+    }
+    if (totalPages > 1) {
+        kb.text(`${page}/${totalPages}`, `noop`)
+    }
+    if (page < totalPages) {
+        kb.text("Next →", `${prefix}:page:${page + 1}`)
+    }
+
+    return kb
+}
+
+/**
+ * Keyboard with per-task action buttons + pagination.
+ * Each task gets a row: [Open N] [✅ N]
+ */
+export function taskListKeyboard(
+    tasks: Task[],
+    prefix: string,
+    page: number,
+    totalPages: number,
+    pageOffset: number,
+): InlineKeyboard {
+    const kb = new InlineKeyboard()
+
+    for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i]!
+        const num = pageOffset + i + 1
+        kb.text(`📌 Open ${num}`, `open:${task.id}`)
+        kb.text(`✅ Done ${num}`, `done:${task.id}`)
+        kb.row()
+    }
 
     if (page > 1) {
         kb.text("← Back", `${prefix}:page:${page - 1}`)

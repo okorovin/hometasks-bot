@@ -79,3 +79,36 @@ Added voice message support — bot now transcribes voice notes via OpenAI Whisp
 ### Next steps:
 - Run `prisma db push` on production/accessible DB to apply VOICE enum
 - Test voice message flow end-to-end
+
+## Session 8 — 2026-05-18 (Bug fixes: repeat duplicates + inbox buttons)
+
+### Problem 1: Duplicate recurring tasks
+**Root cause**: `completeTask()` in `task.service.ts` had two bugs:
+1. No guard against completing an already-DONE task — clicking "Done" on multiple overdue cards (scheduler sends a new card daily for the same overdue task) would each create a new repeat instance
+2. The repeat rule on the completed task was never deactivated, so it could fire again
+
+**Fix** (`src/services/task.service.ts`):
+- Added guard: if task status !== ACTIVE, return early without creating repeat
+- After copying repeat rule to new task, deactivate it on the old task (`active: false`)
+
+### Problem 2: Tasks in inbox/lists can't be interacted with
+**Root cause**: All list commands (inbox, today, overdue, week, all) showed tasks as text + pagination-only buttons, with NO action buttons (Open/Done) per task.
+
+**Fix**:
+- Added `taskListKeyboard()` to `src/utils/pagination.ts` — generates per-task [Open N] [Done N] buttons + pagination
+- Updated all list commands to use it: `inbox.ts`, `today.ts`, `overdue.ts`, `week.ts`, `all.ts`
+- Updated `handlePagination` in `callback.ts` to use task buttons on page navigation too
+
+### Files changed:
+- `src/services/task.service.ts` — completeTask guard + deactivate old repeat rule
+- `src/utils/pagination.ts` — new `taskListKeyboard()` function
+- `src/bot/commands/inbox.ts` — use taskListKeyboard
+- `src/bot/commands/today.ts` — use taskListKeyboard
+- `src/bot/commands/overdue.ts` — use taskListKeyboard
+- `src/bot/commands/week.ts` — use taskListKeyboard
+- `src/bot/commands/all.ts` — use taskListKeyboard
+- `src/bot/handlers/callback.ts` — use taskListKeyboard in pagination handler
+
+### Current state:
+- TypeScript compiles without errors
+- Needs deploy to test in production

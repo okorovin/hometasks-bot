@@ -47,6 +47,15 @@ export async function completeTask(taskId: number): Promise<Task> {
     const prisma = getPrisma()
     const now = new Date()
 
+    // Guard: prevent duplicate completion (e.g. clicking Done on multiple overdue cards)
+    const existing = await prisma.task.findUnique({
+        where: { id: taskId },
+        include: { repeatRule: true },
+    })
+    if (!existing || existing.status !== "ACTIVE") {
+        return existing as Task
+    }
+
     const task = await prisma.task.update({
         where: { id: taskId },
         data: {
@@ -84,6 +93,12 @@ export async function completeTask(taskId: number): Promise<Task> {
                 unit: task.repeatRule.unit,
                 active: true,
             },
+        })
+
+        // Deactivate repeat rule on the completed task to prevent duplicates
+        await prisma.repeatRule.update({
+            where: { taskId },
+            data: { active: false },
         })
 
         // Create reminder for new task

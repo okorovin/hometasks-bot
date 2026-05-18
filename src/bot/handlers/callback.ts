@@ -12,7 +12,7 @@ import {
 } from "../keyboards/task-card.js"
 import { awaitingInput } from "./message.js"
 import { dateAtTimeInTz } from "../../utils/date.js"
-import { paginate, paginationKeyboard } from "../../utils/pagination.js"
+import { paginate, taskListKeyboard } from "../../utils/pagination.js"
 import { notifyError } from "../../utils/error-notifier.js"
 import { logger } from "../../logger.js"
 import type { RepeatUnit } from "@prisma/client"
@@ -362,12 +362,13 @@ async function handlePagination(
     }
 
     const { items, totalPages, total } = paginate(tasks, page)
+    const pageOffset = (page - 1) * 5
     const lines = items.map((t, i) =>
-        formatTaskListItem(t, timezone, (page - 1) * 5 + i),
+        formatTaskListItem(t, timezone, pageOffset + i),
     )
 
     const text = `${title} (${total} tasks):\n\n${lines.join("\n")}`
-    const kb = paginationKeyboard(listType, page, totalPages)
+    const kb = taskListKeyboard(items, listType, page, totalPages, pageOffset)
 
     await ctx.editMessageText(text, {
         parse_mode: "HTML",

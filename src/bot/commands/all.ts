@@ -2,7 +2,7 @@ import type { Context } from "grammy"
 import { getOrCreateUser } from "../../services/user.service.js"
 import * as taskService from "../../services/task.service.js"
 import { formatTaskListItem } from "../formatters/task.js"
-import { paginate, paginationKeyboard } from "../../utils/pagination.js"
+import { paginate, taskListKeyboard } from "../../utils/pagination.js"
 
 export async function allCommand(ctx: Context): Promise<void> {
     if (!ctx.from) return
@@ -17,12 +17,13 @@ export async function allCommand(ctx: Context): Promise<void> {
 
     const page = 1
     const { items, totalPages, total } = paginate(tasks, page)
+    const pageOffset = (page - 1) * 5
 
     const lines = items.map((t, i) =>
-        formatTaskListItem(t, user.timezone, (page - 1) * 5 + i),
+        formatTaskListItem(t, user.timezone, pageOffset + i),
     )
 
     const text = `📋 <b>All tasks</b> (${total}):\n\n${lines.join("\n")}`
-    const kb = paginationKeyboard("all", page, totalPages)
+    const kb = taskListKeyboard(items, "all", page, totalPages, pageOffset)
     await ctx.reply(text, { parse_mode: "HTML", reply_markup: kb })
 }
