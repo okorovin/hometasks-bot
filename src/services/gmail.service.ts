@@ -64,6 +64,25 @@ function getHeader(
     return headers?.find((h) => h.name?.toLowerCase() === lower)?.value ?? undefined
 }
 
+async function getEmailSummary(
+    gmail: gmail_v1.Gmail,
+    id: string,
+): Promise<EmailSummary> {
+    const msg = await gmail.users.messages.get({
+        userId: "me",
+        id,
+        format: "metadata",
+        metadataHeaders: ["Subject", "From"],
+    })
+    const headers = msg.data.payload?.headers
+    return {
+        subject: getHeader(headers, "Subject") ?? "(no subject)",
+        from: getHeader(headers, "From") ?? "(unknown sender)",
+        internalDate: Number(msg.data.internalDate ?? 0),
+        snippet: msg.data.snippet ?? "",
+    }
+}
+
 /**
  * Fetch inbox emails newer than the stored cursor.
  * On the very first run (no cursor row) it initialises the cursor to "now" and
@@ -100,26 +119,38 @@ export async function fetchNewEmails(): Promise<EmailSummary[]> {
 
     const emails: EmailSummary[] = []
     for (const id of ids) {
-        const msg = await gmail.users.messages.get({
-            userId: "me",
-            id,
-            format: "metadata",
-            metadataHeaders: ["Subject", "From", "Date"],
-        })
-
-        const internalDate = Number(msg.data.internalDate ?? 0)
-        if (internalDate <= cursorMs) continue // boundary-second dedupe
-
-        const headers = msg.data.payload?.headers
-        emails.push({
-            subject: getHeader(headers, "Subject") ?? "(no subject)",
-            from: getHeader(headers, "From") ?? "(unknown sender)",
-            internalDate,
-            snippet: msg.data.snippet ?? "",
-        })
+        const email = await getEmailSummary(gmail, id)
+        if (email.internalDate <= cursorMs) continue // boundary-second dedupe
+        emails.push(email)
     }
 
     emails.sort((a, b) => a.internalDate - b.internalDate)
+    return emails
+}
+
+/**
+ * Fetch the most recent inbox emails, newest first. Read-only: does NOT touch
+ * the digest cursor. Used by the manual /mail command.
+ */
+export async function fetchRecentEmails(limit: number): Promise<EmailSummary[]> {
+    const gmail = getGmailClient()
+
+    const list = await gmail.users.messages.list({
+        userId: "me",
+        q: "in:inbox",
+        maxResults: limit,
+    })
+
+    const ids = (list.data.messages ?? [])
+        .map((m) => m.id)
+        .filter((id): id is string => Boolean(id))
+
+    const emails: EmailSummary[] = []
+    for (const id of ids) {
+        emails.push(await getEmailSummary(gmail, id))
+    }
+
+    emails.sort((a, b) => b.internalDate - a.internalDate) // newest first
     return emails
 }
 
@@ -155,14 +186,20 @@ function parseSenderName(from: string): string {
     return from.trim()
 }
 
-export function formatDigest(emails: EmailSummary[], timezone: string): string {
+/** Render an email list under a caller-supplied HTML header. */
+export function formatEmailList(
+    emails: EmailSummary[],
+    timezone: string,
+    header: string,
+): string {
     const shown = emails.slice(0, MAX_DIGEST_EMAILS)
-    const plural = emails.length === 1 ? "" : "s"
-    const lines: string[] = [`📬 <b>${emails.length} new email${plural}</b>\n`]
+    const lines: string[] = [`${header}\n`]
 
     shown.forEach((email, index) => {
-        const time = new Date(email.internalDate).toLocaleTimeString("en-GB", {
+        const when = new Date(email.internalDate).toLocaleString("en-GB", {
             timeZone: timezone,
+            day: "2-digit",
+            month: "short",
             hour: "2-digit",
             minute: "2-digit",
         })
@@ -170,7 +207,7 @@ export function formatDigest(emails: EmailSummary[], timezone: string): string {
         lines.push(
             `${index + 1}. <b>${escapeHtml(truncate(email.subject, SUBJECT_MAX))}</b>`,
         )
-        lines.push(`   from ${escapeHtml(sender)} — ${time}`)
+        lines.push(`   from ${escapeHtml(sender)} — ${when}`)
         if (email.snippet) {
             lines.push(`   ${escapeHtml(truncate(email.snippet, SNIPPET_MAX))}`)
         }
@@ -182,6 +219,15 @@ export function formatDigest(emails: EmailSummary[], timezone: string): string {
     }
 
     return lines.join("\n").trimEnd()
+}
+
+export function formatDigest(emails: EmailSummary[], timezone: string): string {
+    const plural = emails.length === 1 ? "" : "s"
+    return formatEmailList(
+        emails,
+        timezone,
+        `📬 <b>${emails.length} new email${plural}</b>`,
+    )
 }
 
 export { GMAIL_READONLY_SCOPE }

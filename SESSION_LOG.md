@@ -44,6 +44,17 @@ emails (subject + sender + time + snippet) and sends them to the configured user
 - `messages.list` caps at 100 without pagination — fine for personal inbox volume;
   add pagination if >100 new emails can arrive within the lookback window.
 
+### Follow-ups (same session):
+- Added observability logs to the hourly job: `Gmail check: no new emails` / `Gmail digest sent {count}`.
+- Added `npm run gmail:test` (read-only smoke test) — live-verified, works.
+- Added `/mail` command: lists the latest 10 inbox emails, read-only (does NOT
+  touch the digest cursor). New service fns `fetchRecentEmails()` +
+  `formatEmailList()` (formatDigest now builds on the shared renderer; timestamps
+  now show short date + time, e.g. "28 Jul, 14:32"). `/mail` shows in the bot
+  menu only when Gmail is enabled.
+- Server timezone note: Railway runs UTC, but all digest times use the recipient
+  User's `timezone` (default Europe/Moscow); server TZ is irrelevant.
+
 ## Session 1 — 2026-02-17 (Initial PRD & Spec)
 - Created task.md with initial PRD
 - Reviewed and refined spec through 16 prompts

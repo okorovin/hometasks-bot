@@ -51,7 +51,7 @@ The bot process and the API server run in the **same Node process** (`src/index.
 ```
 src/
   bot/            # Telegram bot (grammY)
-    commands/     # /add /today /week /inbox /overdue /all /tags /settings /web /help
+    commands/     # /add /today /week /inbox /overdue /all /tags /settings /web /mail /help
     handlers/     # message.ts (text/forward → task), callback.ts (inline buttons), voice.ts (Whisper)
     keyboards/    # Inline keyboard builders (task-card, tag-keyboard)
     middleware/   # Auth whitelist

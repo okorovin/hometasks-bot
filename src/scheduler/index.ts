@@ -129,7 +129,10 @@ async function processGmail(bot: Bot<Context>): Promise<void> {
 
     try {
         const emails = await fetchNewEmails()
-        if (emails.length === 0) return
+        if (emails.length === 0) {
+            logger.info("Gmail check: no new emails")
+            return
+        }
 
         const text = formatDigest(emails, timezone)
         const chunks = splitMessage(text, TELEGRAM_MSG_LIMIT)
@@ -140,6 +143,7 @@ async function processGmail(bot: Bot<Context>): Promise<void> {
         // Advance cursor only after a successful send.
         const newestInternalDate = emails[emails.length - 1]!.internalDate
         await saveCursor(newestInternalDate)
+        logger.info({ count: emails.length }, "Gmail digest sent")
     } catch (error) {
         logger.error({ err: error }, "Failed to send Gmail digest")
         await notifyError(error, "Gmail digest", chatId)

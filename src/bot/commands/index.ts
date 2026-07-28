@@ -9,6 +9,8 @@ import { settingsCommand } from "./settings.js"
 import { helpCommand } from "./help.js"
 import { tagsCommand, tagFilterCommand } from "./tags.js"
 import { webCommand } from "./web.js"
+import { mailCommand } from "./mail.js"
+import { isGmailEnabled } from "../../services/gmail.service.js"
 
 export function registerCommands(bot: Bot): void {
     bot.command("start", helpCommand)
@@ -23,10 +25,11 @@ export function registerCommands(bot: Bot): void {
     bot.command("tags", tagsCommand)
     bot.command("tag", tagFilterCommand)
     bot.command("web", webCommand)
+    bot.command("mail", mailCommand)
 }
 
 export async function setCommandsMenu(bot: Bot): Promise<void> {
-    await bot.api.setMyCommands([
+    const commands = [
         { command: "add", description: "Add a new task" },
         { command: "today", description: "Tasks due today" },
         { command: "inbox", description: "Tasks without due date" },
@@ -38,5 +41,11 @@ export async function setCommandsMenu(bot: Bot): Promise<void> {
         { command: "tag", description: "Filter tasks by tag" },
         { command: "web", description: "Open web interface" },
         { command: "help", description: "Help" },
-    ])
+    ]
+
+    if (isGmailEnabled()) {
+        commands.push({ command: "mail", description: "Last 10 emails (Gmail)" })
+    }
+
+    await bot.api.setMyCommands(commands)
 }
