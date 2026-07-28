@@ -59,14 +59,15 @@ src/
   api/            # Fastify HTTP API (shares Prisma + services with the bot)
     routes/       # auth.ts, tasks.ts, tags.ts (registered under /api/*)
     plugins/      # auth.ts (JWT), static.ts (serves web/dist with SPA fallback)
-  services/       # Business logic: task, reminder, repeat, user, tag, llm, auth
-  scheduler/      # 60s interval: reminders, digest, overdue
+  services/       # Business logic: task, reminder, repeat, user, tag, llm, auth, gmail
+  scheduler/      # 60s interval: reminders, digest, overdue, hourly Gmail digest
+  scripts/        # One-off CLIs (gmail-auth.ts → `npm run gmail:auth`)
   db/             # Prisma client initialization
   config/         # Environment variables (validated at startup)
   utils/          # Date math, error notifier, pagination
   index.ts        # Entry point: connects DB → startApi() → bot.start()
 prisma/
-  schema.prisma   # DB schema: User, Task, RepeatRule, Reminder, Tag, TaskTag
+  schema.prisma   # DB schema: User, Task, RepeatRule, Reminder, Tag, TaskTag, GmailState
 web/              # React 19 + Ant Design SPA (Vite), FSD structure
 ```
 
@@ -87,6 +88,8 @@ web/              # React 19 + Ant Design SPA (Vite), FSD structure
 **Error handling:** Errors sent to user in Telegram with deduplication (5min window).
 
 **Quiet hours:** 22:00–09:00 by default, reminders postponed to 09:05.
+
+**Gmail digest:** Optional hourly job (`gmail.service.ts` + scheduler `processGmail`). Uses Gmail API (`googleapis`, `gmail.readonly`) with a refresh token from `npm run gmail:auth`. New emails are tracked by a DB cursor (`GmailState.lastInternalDate`, epoch ms) using `newer_than:2d in:inbox` + `internalDate > cursor` filtering. Skipped during quiet hours (cursor not advanced) so overnight mail arrives in one morning digest. Disabled unless `GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET`/`GMAIL_REFRESH_TOKEN` are all set.
 
 ## Code Style
 

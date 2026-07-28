@@ -10,7 +10,9 @@
         "start": "node dist/index.js",
         "db:generate": "prisma generate",
         "db:migrate": "prisma migrate dev",
-        "db:push": "prisma db push"
+        "db:push": "prisma db push",
+        "gmail:auth": "tsx src/scripts/gmail-auth.ts",
+        "gmail:test": "tsx src/scripts/gmail-test.ts"
     },
     "engines": {
         "node": ">=22.0.0"
@@ -24,6 +26,7 @@
         "dotenv": "^17.3.1",
         "fastify": "^5.8.5",
         "fastify-plugin": "^5.1.0",
+        "googleapis": "^173.0.0",
         "grammy": "^1.40.0",
         "openai": "^6.22.0",
         "pg": "^8.18.0",

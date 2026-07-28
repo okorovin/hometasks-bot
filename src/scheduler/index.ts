@@ -13,6 +13,13 @@ import {
     formatDate,
 } from "../utils/date.js"
 import { notifyError } from "../utils/error-notifier.js"
+import {
+    isGmailEnabled,
+    getNotifyChatId,
+    fetchNewEmails,
+    saveCursor,
+    formatDigest,
+} from "../services/gmail.service.js"
 import { logger } from "../logger.js"
 
 const TELEGRAM_MSG_LIMIT = 4000
@@ -46,6 +53,10 @@ const lastDigestSent = new Map<number, string>()
 // Track when overdue notifications were last sent per user (daily)
 const lastOverdueSent = new Map<number, string>()
 
+// Gmail digest: check at most once per hour
+const GMAIL_INTERVAL_MS = 60 * 60 * 1000
+let lastGmailCheck: number | null = null
+
 export function startScheduler(bot: Bot<Context>): void {
     logger.info("Scheduler started (60s interval)")
 
@@ -76,6 +87,63 @@ async function tick(bot: Bot<Context>): Promise<void> {
     await processDueReminders(bot)
     await processDigest(bot)
     await processOverdue(bot)
+    await processGmail(bot)
+}
+
+/**
+ * 4. Gmail hourly digest: list new inbox emails and send them to the configured
+ * recipient. Skips entirely during quiet hours (cursor not advanced), so
+ * overnight emails arrive in one digest right after quiet hours end.
+ */
+async function processGmail(bot: Bot<Context>): Promise<void> {
+    if (!isGmailEnabled()) return
+
+    const chatId = getNotifyChatId()
+    if (chatId === null) {
+        logger.warn(
+            "Gmail digest enabled but recipient is ambiguous — set GMAIL_NOTIFY_TELEGRAM_ID",
+        )
+        return
+    }
+
+    const now = Date.now()
+    if (lastGmailCheck !== null && now - lastGmailCheck < GMAIL_INTERVAL_MS) {
+        return
+    }
+
+    // Use the recipient's timezone/quiet hours when we know them, else defaults.
+    const prisma = getPrisma()
+    const user = await prisma.user.findUnique({
+        where: { telegramUserId: BigInt(chatId) },
+    })
+    const timezone = user?.timezone ?? "Europe/Moscow"
+    const quietFrom = user?.quietFrom ?? "22:00"
+    const quietTo = user?.quietTo ?? "09:00"
+
+    // Quiet hours: skip the whole check, do NOT advance the cursor or the timer.
+    if (isTimeInQuietHours(new Date(), timezone, quietFrom, quietTo)) {
+        return
+    }
+
+    lastGmailCheck = now
+
+    try {
+        const emails = await fetchNewEmails()
+        if (emails.length === 0) return
+
+        const text = formatDigest(emails, timezone)
+        const chunks = splitMessage(text, TELEGRAM_MSG_LIMIT)
+        for (const chunk of chunks) {
+            await bot.api.sendMessage(chatId, chunk, { parse_mode: "HTML" })
+        }
+
+        // Advance cursor only after a successful send.
+        const newestInternalDate = emails[emails.length - 1]!.internalDate
+        await saveCursor(newestInternalDate)
+    } catch (error) {
+        logger.error({ err: error }, "Failed to send Gmail digest")
+        await notifyError(error, "Gmail digest", chatId)
+    }
 }
 
 /**

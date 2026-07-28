@@ -7,6 +7,16 @@ datasource db {
     provider = "postgresql"
 }
 
+// Single-row cursor for the hourly Gmail digest.
+// lastInternalDate = epoch ms of the newest email already reported.
+model GmailState {
+    id               Int      @id @default(1)
+    lastInternalDate BigInt   @default(0) @map("last_internal_date")
+    updatedAt        DateTime @updatedAt @map("updated_at")
+
+    @@map("gmail_state")
+}
+
 model User {
     id             Int      @id @default(autoincrement())
     telegramUserId BigInt   @unique @map("telegram_user_id")

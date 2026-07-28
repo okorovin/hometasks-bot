@@ -29,5 +29,12 @@ export const config = {
     WEB_URL: optionalEnv("WEB_URL", "http://localhost:3000"),
     PORT: parseInt(optionalEnv("PORT", "3000"), 10),
 
+    // Gmail hourly digest (optional; feature disabled unless all three are set)
+    GMAIL_CLIENT_ID: optionalEnv("GMAIL_CLIENT_ID", ""),
+    GMAIL_CLIENT_SECRET: optionalEnv("GMAIL_CLIENT_SECRET", ""),
+    GMAIL_REFRESH_TOKEN: optionalEnv("GMAIL_REFRESH_TOKEN", ""),
+    // Recipient chat id; defaults to the single ALLOWED_TELEGRAM_IDS entry when empty
+    GMAIL_NOTIFY_TELEGRAM_ID: optionalEnv("GMAIL_NOTIFY_TELEGRAM_ID", ""),
+
     NODE_ENV: optionalEnv("NODE_ENV", "development"),
 } as const

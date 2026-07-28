@@ -1,5 +1,49 @@
 # SESSION_LOG.md
 
+## Session — 2026-07-28 (Gmail hourly digest)
+
+### What was done:
+Added an hourly Gmail → Telegram digest. Once per hour the bot lists new inbox
+emails (subject + sender + time + snippet) and sends them to the configured user.
+
+### Decisions (see spec):
+- Access: **Gmail API (OAuth2)**, scope `gmail.readonly`, via `googleapis`.
+- Auth setup: one-time CLI (`npm run gmail:auth`) → `refresh_token` in env.
+- "New" = emails since last check, tracked by a DB cursor (`GmailState.lastInternalDate`, epoch ms).
+- Query uses documented `newer_than:2d in:inbox` + precise `internalDate > cursor` filter
+  (the `after:<unix>` operator is undocumented, so avoided).
+- Quiet hours (22:00–09:00): check skipped, cursor not advanced → one morning digest.
+- Feature is OFF unless GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN are all set.
+
+### Files created:
+- `src/services/gmail.service.ts` — OAuth client, `fetchNewEmails()`, cursor, `formatDigest()`
+- `src/scripts/gmail-auth.ts` — one-time refresh-token CLI (loopback OAuth on :3111)
+- `docs/superpowers/specs/2026-07-28-gmail-hourly-digest-design.md` — design spec
+
+### Files modified:
+- `prisma/schema.prisma` — new `GmailState` model (needs `db push` on deploy)
+- `src/config/index.ts` — GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN, GMAIL_NOTIFY_TELEGRAM_ID (all optional)
+- `src/scheduler/index.ts` — hourly `processGmail()` job with quiet-hours gate
+- `package.json` — `googleapis` dep + `gmail:auth` script
+- `.env.example`, `CLAUDE.md`
+
+### Builds & verification:
+- `npm run db:generate` — clean (GmailState in client)
+- `npm run build` / `npx tsc --noEmit` — clean, no type errors
+- Added `npm run gmail:test` (read-only smoke test: getProfile + latest inbox subjects).
+- Live-verified against real Gmail credentials — connection works (user confirmed).
+
+### What to do next (user):
+1. Google Cloud: create project → enable Gmail API → OAuth client type **Desktop app**.
+2. Put GMAIL_CLIENT_ID/SECRET in `.env`, run `npm run gmail:auth`, copy refresh token.
+3. Set the 3 GMAIL_* vars (+ optional GMAIL_NOTIFY_TELEGRAM_ID) in env locally and on Railway.
+4. `npx prisma db push` to create the `gmail_state` table.
+5. Commit (not done in-session per user request).
+
+### Known limitation:
+- `messages.list` caps at 100 without pagination — fine for personal inbox volume;
+  add pagination if >100 new emails can arrive within the lookback window.
+
 ## Session 1 — 2026-02-17 (Initial PRD & Spec)
 - Created task.md with initial PRD
 - Reviewed and refined spec through 16 prompts
