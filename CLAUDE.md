@@ -4,61 +4,85 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Language
 
-Respond in Russian. All UI text in the app must be in English.
+Respond in Russian. All UI text in the app (bot messages + web) must be in English.
 
 ## Commands
 
+Backend / bot (run from repo root):
+
 ```bash
-npm run dev          # Start bot in dev mode (tsx watch)
-npm run build        # TypeScript compilation (tsc -b)
+npm run dev          # Start bot + API in dev mode (tsx watch src/index.ts)
+npm run build        # TypeScript compilation (tsc -b) → dist/
 npm run start        # Start compiled bot (node dist/index.js)
 npm run db:generate  # Generate Prisma client
-npm run db:migrate   # Run Prisma migrations
-npm run db:push      # Push schema to database
+npm run db:migrate   # Run Prisma migrations (dev)
+npm run db:push      # Push schema to database (used in Docker/prod startup)
 ```
 
-No test runner is configured.
+Web frontend (run from `web/`):
+
+```bash
+cd web
+npm run dev          # Vite dev server; proxies /api → http://localhost:3000
+npm run build        # tsc -b && vite build → web/dist/ (served by the API in prod)
+npm run preview      # Preview the production build
+```
+
+No test runner is configured (no `npm test`).
 
 ## Tech Stack
 
-- **Node.js 22** (LTS) + **TypeScript ~5.7** (strict mode)
+**Backend (`src/`):**
+- **Node.js 22** (LTS) + **TypeScript ~5.9** (strict mode, ESM / NodeNext)
 - **grammY 1.40** — Telegram bot framework (long-polling)
-- **Prisma 7** + `@prisma/adapter-pg` — ORM with PostgreSQL
-- **pino** — structured logging
-- **OpenAI SDK** — LLM integration (provider-agnostic, OpenAI-compatible)
-- **dotenv** — environment configuration
-- **Stripe** (`@stripe/react-stripe-js`) for payment methods
+- **Fastify 5** — HTTP API (`@fastify/jwt`, `@fastify/cors`, `@fastify/static`, `fastify-plugin`)
+- **Prisma 7** + `@prisma/adapter-pg` + `pg` — ORM with PostgreSQL
+- **OpenAI SDK** — LLM parsing + Whisper voice transcription (provider-agnostic, OpenAI-compatible base URL)
+- **pino** — structured logging; **dotenv** — env config
+
+**Frontend (`web/`):**
+- **React 19** + **React Router 7** + **Ant Design 5** (+ `@ant-design/icons`, `dayjs`)
+- **Vite 6** build. Structure follows Feature-Sliced Design (see `.rules/FSD.md`, `.rules/Frontend.md`).
+
+The bot process and the API server run in the **same Node process** (`src/index.ts` calls `startApi()` then `bot.start()`).
 
 ## Architecture
 
 ```
 src/
   bot/            # Telegram bot (grammY)
-    commands/     # /add, /today, /inbox, etc.
-    handlers/     # message.ts (text/forward → task), callback.ts (inline buttons)
-    keyboards/    # Inline keyboard builders
+    commands/     # /add /today /week /inbox /overdue /all /tags /settings /web /help
+    handlers/     # message.ts (text/forward → task), callback.ts (inline buttons), voice.ts (Whisper)
+    keyboards/    # Inline keyboard builders (task-card, tag-keyboard)
     middleware/   # Auth whitelist
     formatters/   # Task card formatting
-  services/       # Business logic (task, reminder, repeat, user, llm)
+  api/            # Fastify HTTP API (shares Prisma + services with the bot)
+    routes/       # auth.ts, tasks.ts, tags.ts (registered under /api/*)
+    plugins/      # auth.ts (JWT), static.ts (serves web/dist with SPA fallback)
+  services/       # Business logic: task, reminder, repeat, user, tag, llm, auth
   scheduler/      # 60s interval: reminders, digest, overdue
   db/             # Prisma client initialization
-  config/         # Environment variables
+  config/         # Environment variables (validated at startup)
   utils/          # Date math, error notifier, pagination
-  logger.ts       # pino logger
-  index.ts        # Entry point
+  index.ts        # Entry point: connects DB → startApi() → bot.start()
 prisma/
-  schema.prisma   # Database schema
+  schema.prisma   # DB schema: User, Task, RepeatRule, Reminder, Tag, TaskTag
+web/              # React 19 + Ant Design SPA (Vite), FSD structure
 ```
 
 ### Key Patterns
 
-**Services:** Pure async functions (no classes) that use Prisma for DB access.
+**Services:** Pure async functions (no classes) that use Prisma for DB access. Shared by both the bot and the API layer — put business logic here, not in routes/handlers.
 
-**Task lifecycle:** Message → LLM parse → create task → send card → inline buttons edit in-place.
+**Task lifecycle:** Message (text/forward/voice) → LLM parse → create task → send card → inline buttons edit in-place. `Task.cardMessageId` tracks the Telegram card message for later edits.
 
 **Scheduler:** `setInterval(60s)` processes due reminders, daily digest, overdue notifications.
 
-**Auth:** Middleware checks `ctx.from.id` against `ALLOWED_TELEGRAM_IDS` env.
+**Bot auth:** Middleware checks `ctx.from.id` against the `ALLOWED_TELEGRAM_IDS` whitelist.
+
+**Web auth flow:** `/web` command → `generateToken()` mints a one-time UUID (5-min TTL, in-memory `Map` in `auth.service.ts`) → user opens `${WEB_URL}/login?token=...` → frontend POSTs it to `/api/auth/token` → validated and exchanged for a **7-day JWT** (`@fastify/jwt`). API routes are guarded by the `authenticate` decorator.
+
+**Static serving:** In production the API serves `web/dist/` with an SPA fallback (non-`/api/` 404s return `index.html`). If `web/dist` is absent, the static plugin is a no-op.
 
 **Error handling:** Errors sent to user in Telegram with deduplication (5min window).
 
@@ -67,8 +91,9 @@ prisma/
 ## Code Style
 
 - 4-space indent, named exports
-- `.js` extensions in imports (NodeNext module resolution)
+- `.js` extensions in imports (NodeNext module resolution) — required in `src/`
 - Prefer `interface` over `type` where possible
+- Frontend must follow the FSD import boundaries in `.rules/FSD.md` (app → pages → widgets → features → entities → shared; cross-slice imports only via barrels)
 
 
 ## 🔒 Core Rules (NON-NEGOTIABLE)
